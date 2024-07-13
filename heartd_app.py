@@ -8,293 +8,279 @@ from imblearn.over_sampling import SMOTE
 from sklearn.metrics import accuracy_score
 
 # Preprocessing and Modelling
-# Read Data
-# Memuat dataset
-df = pd.read_csv('Dataset/df_cleaned.csv')
 
-# Memisahkan fitur dan label
-X = df.drop(columns=['target'])
-y = df['target']
+# Read Data
+with open('heart+disease/hungarian.data', encoding='Latin1') as file:
+  lines = [line.strip() for line in file]
+
+# Convert the data into DataFrame
+data = itertools.takewhile(
+    lambda x: len(x) == 76,
+    (' '.join(lines[i:(i+10)]).split() for i in range(0, len(lines), 10))
+)
+
+# Make dataframe
+df = pd.DataFrame.from_records(data)
+
+# Remove first column because it is an index column
+df = df.drop(df.columns[0], axis=1)
+
+# Remove last column because the column containing string values
+df = df.iloc[:, :-1]
+
+# Change datatype to float
+df = df.astype(float)
+
+# Change the -9.0 value to Null Value
+df.replace(-9.0, np.nan, inplace=True)
+
+# Feature Selection
+df2 = df.iloc[:, [1, 2, 7, 8, 10, 14, 17, 30, 36, 38, 39, 42, 49, 56]]
+
+# Changing column names
+df2.columns = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal', 'target']
+
+# Count percentage of missing values in each columns
+missing_percentage = (df2.isnull().sum() / len(df2)) * 100
+
+# Get index of columns that have missing values more than 60%
+columns_to_drop = missing_percentage[missing_percentage > 60].index
+
+# Drop the columns
+df_cleaned = df2.drop(columns=columns_to_drop)
+
+# Fill the missing value using mean values
+df_cleaned = df_cleaned.apply(lambda col: col.fillna(round(col.mean())))
+
+# Remove duplicate values
+df_cleaned = df_cleaned.drop_duplicates()
+
+# Drop target column and assigning rest of the columns into X
+X = df_cleaned.drop('target', axis=1).values
+
+# Assigning target coulmns into y
+y = df_cleaned.iloc[:, -1]
 
 # Oversampling
 smote = SMOTE(random_state=42)
-X_smote, y_smote = smote.fit_resample(X, y)
-
-# Normalisasi data
-scaler = MinMaxScaler()
-X_smote = scaler.fit_transform(X_smote)
+X, y = smote.fit_resample(X, y)
 
 # Load model
-model = pickle.load(open("Model/rf_model_normalisasi.pkl", 'rb'))
+model = pickle.load(open("xgb_model.pkl", 'rb'))
 
 # Model Evaluation
-y_pred = model.predict(X_smote)
+y_pred = model.predict(X)
 accuracy = accuracy_score(y, y_pred)
 accuracy = round((accuracy * 100), 2)
 
-# Streamlit
+df_final = pd.DataFrame(X, columns=df_cleaned.columns[:-1])
+df_final['target'] = y
+
+#--------------------------------------- Streamlit --------------------------------------
 st.set_page_config(
-    page_title="Aplikasi Prediksi Penyakit Jantung",
-    page_icon=":heart:",
+    page_title = "Heartris",
+    page_icon= ':blue_heart:'
 )
 
-st.title("Aplikasi Prediksi Penyakit Jantung")
+st.title("Heart Disease Prediction")
+st.write(f"**_Model's Accuracy_**: {accuracy}")
 
-tab1, tab2 = st.tabs(['Single Prediction', 'Multi Prediction'])
+tab1, tab2 = st.tabs(['Single-predict', 'Multi-predict'])
 
 with tab1:
-    st.sidebar.header("**Input User** Sidebar")
+  st.sidebar.header("**User Input** Sidebar")
 
-    # Menambahkan input usia pada sidebar
-    age = st.sidebar.number_input(
-        label=":white[**Age**]",
-        min_value=int(df['age'].min()),
-        max_value=int(df['age'].max()),
-        step=1
-    )
+  age = st.sidebar.number_input(label=":violet[**Age**]", min_value=df_final['age'].min(), max_value=df_final['age'].max())
+  st.sidebar.write(f":orange[Min] value: :orange[**{df_final['age'].min()}**], :red[Max] value: :red[**{df_final['age'].max()}**]")
+  st.sidebar.write("")
 
-    st.sidebar.write(
-        f":orange[Min] value: :orange[**{df['age'].min()}**], :red[Max] value: :red[**{df['age'].max()}**]"
-    )
-    st.sidebar.write("")
+  sex_sb = st.sidebar.selectbox(label=":violet[**Sex**]", options=["Male", "Female"])
+  st.sidebar.write("")
+  st.sidebar.write("")
+  if sex_sb == "Male":
+    sex = 1
+  elif sex_sb == "Female":
+    sex = 0
+  # -- Value 0: Female
+  # -- Value 1: Male
 
-    # Menambahkan input jenis kelamin pada sidebar
-    sex_sb = st.sidebar.selectbox(label=":white[**Sex**]", options=["Male", "Female"])
-    st.sidebar.write("")
-    # Mengubah jenis kelamin menjadi int
-    if sex_sb == "Male":
-        sex = 1
-    elif sex_sb == "Female":
-        sex = 0
-    
-    # Menambahkan input chest pain pada sidebar
-    cp_sb = st.sidebar.selectbox(
-        label=":white[**Chest Pain**]", 
-        options=["Typical Angina",
-                 "Atypical Angina", 
-                 "Non-anginal Pain", 
-                 "Asymptomatic"
-                ],
-    )
-    st.sidebar.write("")
-    # Mengubah chest pain menjadi int
-    if cp_sb == "Typical Angina":
-        cp = 1
-    elif cp_sb == "Atypical Angina":
-        cp = 2
-    elif cp_sb == "Non-anginal Pain":
-        cp = 3
-    elif cp_sb == "Asymptomatic":
-        cp = 4
-    
-    # Menambahkan input resting blood pressure pada sidebar
-    trestbps = st.sidebar.number_input(
-        label=":white[**Resting Blood Pressure**]",
-        min_value=int(df['trestbps'].min()),
-        max_value=int(df['trestbps'].max()),
-        step=1
-    )
-    st.sidebar.write(
-        f":orange[Min] value: :orange[**{df['trestbps'].min()}**], :red[Max] value: :red[**{df['trestbps'].max()}**]"
-    )
-    st.sidebar.write("")
+  cp_sb = st.sidebar.selectbox(label=":violet[**Chest pain type**]", options=["Typical angina", "Atypical angina", "Non-anginal pain", "Asymptomatic"])
+  st.sidebar.write("")
+  st.sidebar.write("")
+  if cp_sb == "Typical angina":
+    cp = 1
+  elif cp_sb == "Atypical angina":
+    cp = 2
+  elif cp_sb == "Non-anginal pain":
+    cp = 3
+  elif cp_sb == "Asymptomatic":
+    cp = 4
+  # -- Value 1: typical angina
+  # -- Value 2: atypical angina
+  # -- Value 3: non-anginal pain
+  # -- Value 4: asymptomatic
 
-    # Menambahkan input cholesterol pada sidebar
-    chol = st.sidebar.number_input(
-        label=":white[**Cholesterol**]",
-        min_value=int(df['chol'].min()),
-        max_value=int(df['chol'].max()),
-        step=1
-    )
-    st.sidebar.write(
-        f":orange[Min] value: :orange[**{df['chol'].min()}**], :red[Max] value: :red[**{df['chol'].max()}**]"
-    )
-    st.sidebar.write("")
+  trestbps = st.sidebar.number_input(label=":violet[**Resting blood pressure** (in mm Hg on admission to the hospital)]", min_value=df_final['trestbps'].min(), max_value=df_final['trestbps'].max())
+  st.sidebar.write(f":orange[Min] value: :orange[**{df_final['trestbps'].min()}**], :red[Max] value: :red[**{df_final['trestbps'].max()}**]")
+  st.sidebar.write("")
 
-    # Menambahkan input fasting blood sugar pada sidebar
-    fbs_sb = st.sidebar.selectbox(
-        label=":white[**Fasting Blood Sugar > 120 mg/dl**]",
-        options=["True", "False"]
-    )
-    st.sidebar.write("")
-    # Mengubah fasting blood sugar menjadi int
-    if fbs_sb == "True":
-        fbs = 1
-    elif fbs_sb == "False":
-        fbs = 0
+  chol = st.sidebar.number_input(label=":violet[**Serum cholestoral** (in mg/dl)]", min_value=df_final['chol'].min(), max_value=df_final['chol'].max())
+  st.sidebar.write(f":orange[Min] value: :orange[**{df_final['chol'].min()}**], :red[Max] value: :red[**{df_final['chol'].max()}**]")
+  st.sidebar.write("")
 
-    # Menambahkan input resting electrocardiographic pada sidebar
-    restecg_sb = st.sidebar.selectbox(
-        label=":white[**Resting Electrocardiographic**]",
-        options=["Normal", "ST-T wave abnormality", "Left ventricular hypertrophy"
-                 ],
-    )
-    st.sidebar.write("")
-    # Mengubah resting electrocardiographic menjadi int
-    if restecg_sb == "Normal":
-        restecg = 0
-    elif restecg_sb == "ST-T wave abnormality":
-        restecg = 1
-    elif restecg_sb == "Left ventricular hypertrophy":
-        restecg = 2
+  fbs_sb = st.sidebar.selectbox(label=":violet[**Fasting blood sugar > 120 mg/dl?**]", options=["False", "True"])
+  st.sidebar.write("")
+  st.sidebar.write("")
+  if fbs_sb == "False":
+    fbs = 0
+  elif fbs_sb == "True":
+    fbs = 1
+  # -- Value 0: false
+  # -- Value 1: true
 
-    # Menambahkan input maximum heart rate pada sidebar
-    thalach = st.sidebar.number_input(
-        label=":white[**Maximum Heart Rate**]",
-        min_value=int(df['thalach'].min()),
-        max_value=int(df['thalach'].max()),
-        step=1
-    )
-    st.sidebar.write(
-        f":orange[Min] value: :orange[**{df['thalach'].min()}**], :red[Max] value: :red[**{df['thalach'].max()}**]"
-    )
-    st.sidebar.write("")
+  restecg_sb = st.sidebar.selectbox(label=":violet[**Resting electrocardiographic results**]", options=["Normal", "Having ST-T wave abnormality", "Showing left ventricular hypertrophy"])
+  st.sidebar.write("")
+  st.sidebar.write("")
+  if restecg_sb == "Normal":
+    restecg = 0
+  elif restecg_sb == "Having ST-T wave abnormality":
+    restecg = 1
+  elif restecg_sb == "Showing left ventricular hypertrophy":
+    restecg = 2
+  # -- Value 0: normal
+  # -- Value 1: having ST-T wave abnormality (T wave inversions and/or ST  elevation or depression of > 0.05 mV)
+  # -- Value 2: showing probable or definite left ventricular hypertrophy by Estes' criteria
 
-    # Menambahkan input exercise induced angina pada sidebar
-    exang_sb = st.sidebar.selectbox(
-        label=":white[**Exercise Induced Angina?**]",
-        options=["Yes", "No"]
-    )
-    st.sidebar.write("")
-    # Mengubah exercise induced angina menjadi int
-    if exang_sb == "Yes":
-        exang = 1
-    elif exang_sb == "No":
-        exang = 0
+  thalach = st.sidebar.number_input(label=":violet[**Maximum heart rate achieved**]", min_value=df_final['thalach'].min(), max_value=df_final['thalach'].max())
+  st.sidebar.write(f":orange[Min] value: :orange[**{df_final['thalach'].min()}**], :red[Max] value: :red[**{df_final['thalach'].max()}**]")
+  st.sidebar.write("")
 
-    # Menambahkan input ST depression induced by exercise relative to rest pada sidebar
-    oldpeak = st.sidebar.number_input(
-        label=":white[**ST Depression Induced by Exercise**]",
-        min_value=(df['oldpeak'].min()),
-        max_value=(df['oldpeak'].max()),   
-        step=0.1
-    )
-    st.sidebar.write(
-        f":orange[Min] value: :orange[**{df['oldpeak'].min()}**], :red[Max] value: :red[**{df['oldpeak'].max()}**]"
-    )
-    st.sidebar.write("")
+  exang_sb = st.sidebar.selectbox(label=":violet[**Exercise induced angina?**]", options=["No", "Yes"])
+  st.sidebar.write("")
+  st.sidebar.write("")
+  if exang_sb == "No":
+    exang = 0
+  elif exang_sb == "Yes":
+    exang = 1
+  # -- Value 0: No
+  # -- Value 1: Yes
 
-    # Membuat DataFrame dari input user
-    user_input = {
-        "Age": [age],
-        "Sex": [sex_sb],
-        "Chest Pain Type": [cp_sb],
-        "Resting Blood Pressure": f"{trestbps} mmHg",
-        "Cholesterol": f"{chol} mg/dl",
-        "Fasting Blood Sugar > 120 mg/dl?": [fbs_sb],
-        "Resting Electrocardiographic": [restecg_sb],
-        "Maximum Heart Rate": f"{thalach} bpm",
-        "Exercise Induced Angina": [exang_sb],
-        "ST Depression Induced by Exercise": [oldpeak]
-    }
+  oldpeak = st.sidebar.number_input(label=":violet[**ST depression induced by exercise relative to rest**]", min_value=df_final['oldpeak'].min(), max_value=df_final['oldpeak'].max())
+  st.sidebar.write(f":orange[Min] value: :orange[**{df_final['oldpeak'].min()}**], :red[Max] value: :red[**{df_final['oldpeak'].max()}**]")
+  st.sidebar.write("")
 
-    previewdf = pd.DataFrame(user_input, index=["User Input"])
+  data = {
+    'Age': age,
+    'Sex': sex_sb,
+    'Chest pain type': cp_sb,
+    'RPB': f"{trestbps} mm Hg",
+    'Serum Cholestoral': f"{chol} mg/dl",
+    'FBS > 120 mg/dl?': fbs_sb,
+    'Resting ECG': restecg_sb,
+    'Maximum heart rate': thalach,
+    'Exercise induced angina?': exang_sb,
+    'ST depression': oldpeak,
+  }
 
-    # Menampilkan input user
-    st.header("User Input")
-    st.write("")
-    st.dataframe(previewdf.iloc[:, :6])
-    st.dataframe(previewdf.iloc[:, 6:])
+  preview_df = pd.DataFrame(data, index=['input'])
 
-    # Menambahkan button untuk prediksi
-    st.write("")
-    if st.button("Predict"):
-        inputs = [[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak]]
-        inputs = scaler.transform(inputs)
-        prediction = model.predict(inputs)[0]
+  st.header("User Input as DataFrame")
+  st.write("")
+  st.dataframe(preview_df.iloc[:, :6])
+  st.write("")
+  st.dataframe(preview_df.iloc[:, 6:])
+  st.write("")
 
-        # Menampilkan proses
-        with st.spinner("Predicting..."):
-            time.sleep(1)
-            st.success("Prediction Complete")
-        
-        # Menampilkan hasil prediksi
-        if prediction == 0:
-            result = ":green[**Healthy**]"
-            desc = "Menunjukkan bahwa pengguna tidak memiliki penyakit jantung."
-        elif prediction == 1:
-            result = ":orange[**Heart Disease level 1**]"
-            desc = "Menunjukkan bahwa pengguna memiliki penyakit jantung tingkat ringan. Biasanya diartikan sebagai gejala awal penyakit jantung."
-        elif prediction == 2:
-            result = ":orange[**Heart Disease level 2**]"
-            desc = "Menunjukkan bahwa pengguna memiliki penyakit jantung tingkat sedang. Biasanya diartikan sebagai penyakit jantung yang sudah berkembang. Gejala dan risiko akan bertambah berat jika tidak segera ditangani."
-        elif prediction == 3:
-            result = ":red[**Heart Disease level 3**]"
-            desc = "Menunjukkan bahwa pengguna memiliki penyakit jantung tingkat berat. Biasanya diartikan sebagai penyakit jantung yang sudah parah dan memerlukan penanganan segera. Lebih disarankan segera perawatan medis dan intensif."
-        elif prediction == 4:
-            result = ":red[**Heart Disease level 4**]"
-            desc = "Menunjukkan bahwa pengguna memiliki penyakit jantung tingkat sangat berat. Biasanya diartikan sebagai penyakit jantung yang sudah sangat parah dan mempunyai risiko yang sangat tinggi. Sangat memerlukan perawatan yang sangat intensif."
-        
-        # Menampilkan hasil prediksi
-        st.header("Prediction Result")
-        st.write("")
-        st.subheader(f"Prediction: {result}")
-        st.write(desc)
+  result = ":violet[-]"
+
+  predict_btn = st.button("**Predict**", type="primary")
+
+  st.write("")
+  if predict_btn:
+    inputs = [[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak]]
+    prediction = model.predict(inputs)[0]
+
+    bar = st.progress(0)
+    status_text = st.empty()
+
+    for i in range(1, 101):
+      status_text.text(f"{i}% complete")
+      bar.progress(i)
+      time.sleep(0.01)
+      if i == 100:
+        time.sleep(1)
+        status_text.empty()
+        bar.empty()
+
+    if prediction == 0:
+      result = ":green[**Healthy**]"
+    elif prediction == 1:
+      result = ":orange[**Heart disease level 1**]"
+    elif prediction == 2:
+      result = ":orange[**Heart disease level 2**]"
+    elif prediction == 3:
+      result = ":red[**Heart disease level 3**]"
+    elif prediction == 4:
+      result = ":red[**Heart disease level 4**]"
+
+  st.write("")
+  st.write("")
+  st.subheader("Prediction:")
+  st.subheader(result)
 
 with tab2:
-    st.header("**Multiple Prediction Data**")
-    
-    # Membuat sample csv data
-    sample_data = df.iloc[:5, :-1].to_csv(index=False).encode("utf-8")
-    
-    st.write("")
-    # Menambahkan tombol download
-    st.download_button(
-        label="Download Sample Data",
-        data=sample_data,
-        file_name="sample_data.csv",
-        mime="text/csv"
-    )
-    st.write("")
+  st.header("Predict multiple data:")
 
-    # Menambahkan button unggah file
-    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+  sample_csv = df_final.iloc[:5, :-1].to_csv(index=False).encode('utf-8')
 
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        prediction_arr = model.predict(df)
+  st.write("")
+  st.download_button("Download CSV Example", data=sample_csv, file_name='sample_heart_disease_parameters.csv', mime='text/csv')
 
-        # Menampilkan proses
-        bar = st.progress(0)
-        status_text = st.empty()
+  st.write("")
+  st.write("")
+  file_uploaded = st.file_uploader("Upload a CSV file", type='csv')
 
-        for i in range(1, 70):
-            status_text.text(f"Predicting... {i}% Complete")
-            bar.progress(i)
-            time.sleep(0.01)
+  if file_uploaded:
+    uploaded_df = pd.read_csv(file_uploaded)
+    prediction_arr = model.predict(uploaded_df)
 
-        
-        # Menyiapkan hasil prediksi
-        result_arr = []
+    bar = st.progress(0)
+    status_text = st.empty()
 
-        for prediction in prediction_arr:
-            if prediction == 0:
-                result = "Healthy"
-            elif prediction == 1:
-                result = "Heart Disease level 1"
-            elif prediction == 2:
-                result = "Heart Disease level 2"
-            elif prediction == 3:
-                result = "Heart Disease level 3"
-            elif prediction == 4:
-                result = "Heart Disease level 4"
-            result_arr.append(result)
+    for i in range(1, 70):
+      status_text.text(f"{i}% complete")
+      bar.progress(i)
+      time.sleep(0.01)
 
-        uploaded_result = pd.DataFrame({"Prediction": result_arr})
+    result_arr = []
 
-        for i in range(70, 101):
-            status_text.text(f"Predicting... {i}% Complete")
-            bar.progress(i)
-            time.sleep(0.01)
-            if i == 100:
-                time.sleep(1)
-                status_text.empty()
-                bar.empty()
+    for prediction in prediction_arr:
+      if prediction == 0:
+        result = "Healthy"
+      elif prediction == 1:
+        result = "Heart disease level 1"
+      elif prediction == 2:
+        result = "Heart disease level 2"
+      elif prediction == 3:
+        result = "Heart disease level 3"
+      elif prediction == 4:
+        result = "Heart disease level 4"
+      result_arr.append(result)
 
-        # Menampilkan hasil prediksi
-        col1, col2 = st.columns([1, 2])
+    uploaded_result = pd.DataFrame({'Prediction Result': result_arr})
 
-        with col1:
-            st.dataframe(uploaded_result)
-        with col2:
-            st.dataframe(df)
+    for i in range(70, 101):
+      status_text.text(f"{i}% complete")
+      bar.progress(i)
+      time.sleep(0.01)
+      if i == 100:
+        time.sleep(1)
+        status_text.empty()
+        bar.empty()
+
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+      st.dataframe(uploaded_result)
+    with col2:
+      st.dataframe(uploaded_df)
