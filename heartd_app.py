@@ -1,3 +1,5 @@
+pip install scikit-learn==1.2.2
+
 import itertools
 import time
 import pickle
