@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+scikit-learn
+imbalanced-learn  # This is the package that provides the `imblearn` module
+seaborn
+xgboost
+streamlit
