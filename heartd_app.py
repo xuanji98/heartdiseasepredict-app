@@ -28,7 +28,7 @@ X_smote = scaler.fit_transform(X_smote)
 import os
 
 
-model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'wb'))
+model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
 
 # Model Evaluation
 y_pred = model.predict(X_smote)
