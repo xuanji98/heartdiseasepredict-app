@@ -8,6 +8,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from joblib import load
 
 # Memuat dataset
 df = pd.read_csv('Dataset/df_cleaned.csv')
@@ -25,7 +26,11 @@ scaler = MinMaxScaler()
 X_smote = scaler.fit_transform(X_smote)
 
 # Memuat model
-model = pickle.load(open('Model/rf_model_normalisasi.pkl', 'rb'))
+try:
+    model = load('Model/rf_model_normalisasi.pkl')
+except Exception as e:
+    st.error(f"Error loading the model: {e}")
+    raise
 
 # Model Evaluation
 y_pred = model.predict(X_smote)
