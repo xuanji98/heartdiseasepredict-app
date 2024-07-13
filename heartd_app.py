@@ -9,14 +9,14 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-# Memuat dataset
+# read dataset
 df = pd.read_csv('Dataset/df_cleaned.csv')
 
 # Memisahkan fitur dan label
 X = df.drop(columns=['target'])
 y = df['target']
 
-# Melakukan oversampling menggunakan SMOTE
+# oversampling menggunakan SMOTE
 smote = SMOTE(random_state=42)
 X_smote, y_smote = smote.fit_resample(X, y)
 
@@ -24,8 +24,25 @@ X_smote, y_smote = smote.fit_resample(X, y)
 scaler = MinMaxScaler()
 X_smote = scaler.fit_transform(X_smote)
 
-# Memuat model
-model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
+# load model
+import os
+
+# Check if the model file exists
+model_path = 'Model/knn_model_normalisasi.pkl'
+if not os.path.exists(model_path):
+    st.error('Model file not found! Please ensure the model is saved correctly.')
+else:
+    try:
+        # Load the model
+        with open(model_path, 'rb') as file:
+            model = pickle.load(file)
+        st.success('Model loaded successfully!')
+    except AttributeError as e:
+        st.error(f"AttributeError while loading the model: {e}")
+    except Exception as e:
+        st.error(f"An error occurred while loading the model: {e}")
+
+#model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
 
 # Model Evaluation
 y_pred = model.predict(X_smote)
