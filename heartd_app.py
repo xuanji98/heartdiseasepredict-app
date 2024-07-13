@@ -9,14 +9,14 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-# read dataset
+# Memuat dataset
 df = pd.read_csv('Dataset/df_cleaned.csv')
 
 # Memisahkan fitur dan label
 X = df.drop(columns=['target'])
 y = df['target']
 
-# oversampling menggunakan SMOTE
+# Melakukan oversampling menggunakan SMOTE
 smote = SMOTE(random_state=42)
 X_smote, y_smote = smote.fit_resample(X, y)
 
@@ -24,10 +24,7 @@ X_smote, y_smote = smote.fit_resample(X, y)
 scaler = MinMaxScaler()
 X_smote = scaler.fit_transform(X_smote)
 
-# load model
-import os
-
-
+# Memuat model
 model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
 
 # Model Evaluation
