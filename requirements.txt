@@ -1,8 +1,0 @@
-imbalanced-learn
-scikit-learn==1.2.3
-pandas
-numpy
-matplotlib
-seaborn
-xgboost
-streamlit
