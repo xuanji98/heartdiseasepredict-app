@@ -6,9 +6,9 @@ import numpy as np
 import streamlit as st
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
 
+# Preprocessing and Modelling
+# Read Data
 # Memuat dataset
 df = pd.read_csv('Dataset/df_cleaned.csv')
 
@@ -16,7 +16,7 @@ df = pd.read_csv('Dataset/df_cleaned.csv')
 X = df.drop(columns=['target'])
 y = df['target']
 
-# Melakukan oversampling menggunakan SMOTE
+# Oversampling
 smote = SMOTE(random_state=42)
 X_smote, y_smote = smote.fit_resample(X, y)
 
@@ -24,12 +24,12 @@ X_smote, y_smote = smote.fit_resample(X, y)
 scaler = MinMaxScaler()
 X_smote = scaler.fit_transform(X_smote)
 
-# Memuat model
-model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
+# Load model
+model = pickle.load(open("Model/rf_model_normalisasi.pkl", 'rb'))
 
 # Model Evaluation
 y_pred = model.predict(X_smote)
-accuracy = accuracy_score(y_smote, y_pred)
+accuracy = accuracy_score(y, y_pred)
 accuracy = round((accuracy * 100), 2)
 
 # Streamlit
