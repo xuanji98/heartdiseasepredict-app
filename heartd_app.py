@@ -27,22 +27,8 @@ X_smote = scaler.fit_transform(X_smote)
 # load model
 import os
 
-# Check if the model file exists
-model_path = 'Model/knn_model_normalisasi.pkl'
-if not os.path.exists(model_path):
-    st.error('Model file not found! Please ensure the model is saved correctly.')
-else:
-    try:
-        # Load the model
-        with open(model_path, 'rb') as file:
-            model = pickle.load(file)
-        st.success('Model loaded successfully!')
-    except AttributeError as e:
-        st.error(f"AttributeError while loading the model: {e}")
-    except Exception as e:
-        st.error(f"An error occurred while loading the model: {e}")
 
-#model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'rb'))
+model = pickle.load(open('Model/knn_model_normalisasi.pkl', 'wb'))
 
 # Model Evaluation
 y_pred = model.predict(X_smote)
